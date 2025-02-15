@@ -1,0 +1,10 @@
+django
+djangorestframework
+djongo
+pymongo
+ultralytics
+torch
+opencv-python
+numpy
+pillow
+python-dotenv

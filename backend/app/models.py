@@ -31,7 +31,7 @@ class Product(models.Model):
     batch_number = models.CharField(max_length=100, unique=True, null=True, blank=True)
     total_units = models.PositiveIntegerField(default=0)
     damaged_units = models.PositiveIntegerField(default=0)
-    damages = models.JSONField(default=list)  # Example: ["Expired", "Physical Damage"]
+    damages = models.JSONField(default=list) 
     image = models.ImageField(upload_to="inventory_images/", null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
     
@@ -61,7 +61,7 @@ class Product(models.Model):
     def storage_status(self):
         """Returns if the storage temperature and humidity are within range."""
         if self.category not in STORAGE_CONDITIONS:
-            return True  # If no conditions defined, assume it's OK
+            return True  
         ideal_conditions = STORAGE_CONDITIONS[self.category]
         temp_ok = (self.storage_temp is None) or (ideal_conditions["temp_range"][0] <= self.storage_temp <= ideal_conditions["temp_range"][1])
         humidity_ok = (self.storage_humidity is None) or (ideal_conditions["humidity_range"][0] <= self.storage_humidity <= ideal_conditions["humidity_range"][1])
@@ -71,10 +71,10 @@ class Product(models.Model):
         return f"{self.name} ({self.category}) - {self.total_units} units"
 
     class Meta:
-        ordering = ["-updated_at"]  # Sort by most recently updated
+        ordering = ["-updated_at"]  
 
 
-# Define ideal storage conditions for each medicine category
+
 STORAGE_CONDITIONS = {
     "Tablet": {"temp_range": (15, 25), "humidity_range": (30, 50)},  # Celsius, Percentage
     "Liquid": {"temp_range": (2, 8), "humidity_range": (20, 40)},   # Refrigerator

@@ -2,9 +2,6 @@ django
 djangorestframework
 djongo
 pymongo
-ultralytics
-torch
-opencv-python
-numpy
+google-generativeai
 pillow
 python-dotenv

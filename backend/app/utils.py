@@ -1,15 +1,6 @@
-import os
-import shutil
-import logging
+import base64
 
-logger = logging.getLogger(__name__)
-
-def delete_file(file_path):
-    """
-    Deletes a file if it exists.
-    """
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        logger.info(f"Deleted file: {file_path}")
-        return True
-    return False
+def encode_image(image_path):
+    """Converts an image to base64 for Gemini API."""
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")

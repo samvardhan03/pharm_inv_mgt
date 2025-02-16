@@ -1,14 +1,18 @@
 import os
 import base64
 from google import genai
+from dotenv import load_dotenv
 from pydantic import BaseModel
 import PIL.Image
-from io import BytesIO
 
-# Load API key securely
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBb5poBl9RArJinjKAxXGe7vg3L6jsBAzo")
+# Load environment variables from .env
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Configure Gemini API
+if not GEMINI_API_KEY:
+    raise ValueError("Gemini API Key is missing! Please set it in the .env file.")
+
+#  Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-2.0-flash")
 
@@ -41,8 +45,3 @@ def assess_product(image_path: str):
     ])
 
     return response.text
-
-# Example Usage
-if __name__ == "__main__":
-    image_path = "gemini_model/dataset/test_sample.jpg"
-    print(assess_product(image_path))

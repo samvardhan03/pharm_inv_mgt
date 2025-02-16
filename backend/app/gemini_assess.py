@@ -1,92 +1,48 @@
-import cv2
-import torch
-import numpy as np
-from ultralytics import YOLO
 import os
-import datetime
+import base64
+from google import genai
+from pydantic import BaseModel
+import PIL.Image
+from io import BytesIO
 
-# Load YOLOv8 model
-MODEL_PATH = "ml_model/model_weights/best.pt"
+# Load API key securely
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBb5poBl9RArJinjKAxXGe7vg3L6jsBAzo")
 
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"YOLOv8 model weights not found at {MODEL_PATH}")
+# Configure Gemini API
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-2.0-flash")
 
-model = YOLO(MODEL_PATH)
+class Date(BaseModel):
+    """Schema for extracted expiry date."""
+    day: int | None
+    month: int | None
+    year: int | None
 
-# Define storage conditions for different categories
-STORAGE_CONDITIONS = {
-    "Tablet": {"temp_range": (15, 25), "humidity_range": (30, 50)},  
-    "Liquid": {"temp_range": (2, 8), "humidity_range": (20, 40)},   # Refrigerator
-    "Misc": {"temp_range": (10, 30), "humidity_range": (20, 60)}
-}
+class ProductAssessment(BaseModel):
+    """Schema for product assessment."""
+    expiry_date: Date | str  # 'NA' if not detected
+    damaged: bool
+    opened: bool
 
-def preprocess_image(image_path):
+def encode_image(image_path):
+    """Convert an image to base64 for API compatibility."""
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")
+
+def assess_product(image_path: str):
     """
-    Loads and preprocesses an image before YOLO detection.
+    Sends an image to Gemini API and extracts expiry date, damage status, and opened status.
     """
-    image = cv2.imread(image_path)
-    if image is None:
-        raise ValueError(f"Error loading image: {image_path}")
+    image_base64 = encode_image(image_path)
 
-    return image
+    response = model.generate_content([
+        "Extract the expiry date, check if the product is damaged, and if it is opened. If Expiry Date is not present, return 'NA'.",
+        {"type": "image", "data": image_base64}
+    ])
 
-def check_expiry(expiry_date):
-    """
-    Checks if the medicine is expired.
-    :param expiry_date: String (YYYY-MM-DD)
-    :return: Boolean (True if expired)
-    """
-    today = datetime.date.today()
-    try:
-        expiry = datetime.datetime.strptime(expiry_date, "%Y-%m-%d").date()
-        return expiry < today  # True if expired
-    except ValueError:
-        return None  # Invalid date format
+    return response.text
 
-def detect_objects(image_path, storage_temp=None, storage_humidity=None):
-    """
-    Runs YOLOv8 object detection and filters medicines based on:
-    - Expiry date
-    - Storage conditions (temperature, humidity)
-    """
-    image = preprocess_image(image_path)
-    results = model(image)
-    detected_items = []
-
-    for result in results:
-        for i, box in enumerate(result.boxes.xyxy):
-            x1, y1, x2, y2 = map(int, box)
-            confidence = float(result.boxes.conf[i])  
-            class_id = int(result.boxes.cls[i])  # YOLO class ID
-            label = model.names[class_id]  # Medicine name from YOLO
-
-            # Simulating metadata retrieval (expiry & storage needs)
-            expiry_date = "2025-12-01"  # Normally fetched from DB
-            category = "Tablet" if "tablet" in label.lower() else "Liquid" if "syrup" in label.lower() else "Misc"
-            
-            # Check expiry
-            expired = check_expiry(expiry_date)
-
-            # Check storage conditions
-            storage_ok = True
-            if storage_temp and storage_humidity:
-                ideal_conditions = STORAGE_CONDITIONS.get(category, {})
-                temp_range = ideal_conditions.get("temp_range", (0, 50))
-                humidity_range = ideal_conditions.get("humidity_range", (0, 100))
-
-                if not (temp_range[0] <= storage_temp <= temp_range[1]) or not (humidity_range[0] <= storage_humidity <= humidity_range[1]):
-                    storage_ok = False
-
-            detected_items.append({
-                "name": label,
-                "category": category,
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                "confidence": round(confidence, 2),
-                "expiry_date": expiry_date,
-                "expired": expired,
-                "storage_ok": storage_ok,
-                "storage_temp": storage_temp,
-                "storage_humidity": storage_humidity
-            })
-    
-    return detected_items
+# Example Usage
+if __name__ == "__main__":
+    image_path = "gemini_model/dataset/test_sample.jpg"
+    print(assess_product(image_path))

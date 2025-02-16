@@ -1,5 +1,3 @@
-from djongo import models
-
 DATABASES = {
     "default": {
         "ENGINE": "djongo",
